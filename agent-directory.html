@@ -52,6 +52,14 @@
   .label{font-size:12px}
   .value{font-size:19px;margin-top:2px;min-height:24px}
   .msg{font-size:14px;padding:8px 2px}
+
+  /* Call button next to the phone number */
+  .phone-line{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .phone-line .value{margin-top:2px}
+  .call{flex:none;width:40px;height:40px;border-radius:50%;background:#19a64f;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+  .call[hidden]{display:none}
+  .call svg{width:22px;height:22px}
+  .call:active{background:#128a3f;transform:scale(.95)}
 </style>
 </head>
 <body>
@@ -77,7 +85,14 @@
   <div class="details" id="details" style="display:none">
     <div class="row"><div class="label">Agency Code</div><div class="value" id="f_code"></div></div>
     <div class="row"><div class="label">Agent Name</div><div class="value" id="f_agent"></div></div>
-    <div class="row"><div class="label">Phone Number</div><div class="value" id="f_phone"></div></div>
+    <div class="row"><div class="label">Phone Number</div>
+      <div class="phone-line">
+        <div class="value" id="f_phone"></div>
+        <a class="call" id="call" href="#" aria-label="Call agent" hidden>
+          <svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+        </a>
+      </div>
+    </div>
     <div class="row"><div class="label">Agency Name (Malayalam)</div><div class="value" id="f_agency_ml"></div></div>
     <div class="row"><div class="label">Agent Name (Malayalam)</div><div class="value" id="f_agent_ml"></div></div>
   </div>
@@ -154,6 +169,10 @@ function select(item){
   $("f_code").textContent=item.code||"—";
   $("f_agent").textContent=item.agent||"—";
   $("f_phone").textContent=item.phone||"—";
+  const num=(item.phone||"").replace(/[^\d+]/g,"");
+  const call=$("call");
+  if(num){call.href="tel:"+num;call.hidden=false}
+  else{call.removeAttribute("href");call.hidden=true}
   $("f_agency_ml").textContent=item.agency_ml||"—";
   $("f_agent_ml").textContent=item.agent_ml||"—";
   $("details").style.display="block";
