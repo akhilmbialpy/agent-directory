@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Directory</title>
+<style>
+  :root{
+    --bg:#000; --card-border:#2a2a2a; --text:#fff; --muted:#a8a8a8;
+    --title:#1f4e9c; --field-border:#333; --panel:#262626; --line:#3a3a3a; --ok:#19c25a;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f4f5f7; --card-border:#d8dbe0; --text:#111; --muted:#666; --title:#1f4e9c; --field-border:#c9ccd2; --panel:#eef0f3; --line:#d5d8de; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Roboto,"Noto Sans Malayalam",system-ui,sans-serif;padding:16px}
+  .card{max-width:520px;margin:0 auto;border:1px solid var(--card-border);border-radius:28px;padding:22px 20px 24px}
+  h1{margin:0;font-size:30px;color:var(--title);font-weight:700;padding-bottom:16px;border-bottom:1px solid var(--card-border)}
+  h2{font-size:22px;margin:22px 0 12px;font-weight:700}
+  .field{position:relative}
+  select,input{width:100%;height:56px;border:1px solid var(--field-border);border-radius:18px;background:transparent;color:var(--text);font-size:20px;padding:0 48px 0 20px;outline:none;font-family:inherit}
+  select{appearance:none;-webkit-appearance:none}
+  select option{color:#000}
+  .chev{position:absolute;right:20px;top:50%;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+  .ok{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:26px;height:26px;display:none}
+  .ok.show{display:block}
+  hr{border:0;border-top:1px solid var(--card-border);margin:22px 0 0}
+  .suggest{position:absolute;left:0;right:0;top:62px;background:var(--panel);border:1px solid var(--field-border);border-radius:16px;max-height:240px;overflow:auto;z-index:5;display:none}
+  .suggest div{padding:14px 20px;font-size:18px;border-bottom:1px solid var(--line);cursor:pointer}
+  .suggest div:last-child{border-bottom:0}
+  .details{background:var(--panel);border-radius:22px;padding:6px 18px}
+  .row{padding:20px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:0}
+  .label{color:var(--muted);font-size:18px}
+  .value{font-size:28px;font-weight:700;margin-top:6px;word-break:break-word;min-height:34px}
+  .msg{color:var(--muted);font-size:16px;padding:14px 4px}
+  .err{color:#ff6b6b}
+
+  /* Compact layout: fits in one screen */
+  body{padding:10px}
+  .card{border-radius:22px;padding:14px 14px 14px}
+  h1{font-size:22px;padding-bottom:10px}
+  h2{font-size:15px;margin:12px 0 6px}
+  select,input{height:42px;font-size:16px;border-radius:14px;padding:0 40px 0 14px}
+  .chev{right:16px;width:7px;height:7px}
+  .ok{width:22px;height:22px;right:12px}
+  .suggest{top:48px;border-radius:12px;max-height:180px}
+  .suggest div{padding:10px 14px;font-size:15px}
+  hr{margin:12px 0 0}
+  .details{border-radius:16px;padding:0 14px}
+  .row{padding:8px 0}
+  .label{font-size:12px}
+  .value{font-size:19px;margin-top:2px;min-height:24px}
+  .msg{font-size:14px;padding:8px 2px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Agent Directory</h1>
+
+  <h2>Select Area</h2>
+  <div class="field">
+    <select id="area"></select>
+    <span class="chev"></span>
+  </div>
+
+  <h2 style="margin-top:20px">Search Agency</h2>
+  <div class="field">
+    <input id="search" type="text" placeholder="Type agency name…" autocomplete="off">
+    <svg class="ok" id="ok" viewBox="0 0 24 24" fill="none" stroke="#19c25a" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="suggest" id="suggest"></div>
+  </div>
+
+  <hr>
+  <h2>Agent Details</h2>
+  <div id="status" class="msg">Loading…</div>
+  <div class="details" id="details" style="display:none">
+    <div class="row"><div class="label">Agency Code</div><div class="value" id="f_code"></div></div>
+    <div class="row"><div class="label">Agent Name</div><div class="value" id="f_agent"></div></div>
+    <div class="row"><div class="label">Phone Number</div><div class="value" id="f_phone"></div></div>
+    <div class="row"><div class="label">Agency Name (Malayalam)</div><div class="value" id="f_agency_ml"></div></div>
+    <div class="row"><div class="label">Agent Name (Malayalam)</div><div class="value" id="f_agent_ml"></div></div>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG =================
+   1. Google Sheet-ൽ: File → Share → Publish to web → "Comma-separated values (.csv)" → Publish
+   2. കിട്ടുന്ന ലിങ്ക് താഴെ ഒട്ടിക്കുക.
+   Sheet-ലെ ആദ്യ വരി (heading) ഇങ്ങനെ വേണം:
+   Area | Agency Name | Agency Code | Agent Name | Phone Number | Agency Name (Malayalam) | Agent Name (Malayalam)
+*/
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRT6FX-12aStxEv-7kUKjRk3E5dkTD8onq_2Kvr83i-6Z7SaCU4qoDrjwmIzeVuxxFDco1Yr0D0Uq7K/pub?output=csv";
+
+const DEMO = [
+  {area:"Haripad",agency:"Three Star Agencies",code:"12345",agent:"Joseph",phone:"9876543210",agency_ml:"ത്രീസ്റ്റാർ",agent_ml:"ജോസഫ്"},
+  {area:"Haripad",agency:"Lakshmi Agencies",code:"12346",agent:"Anil",phone:"9876500001",agency_ml:"ലക്ഷ്മി ഏജൻസീസ്",agent_ml:"അനിൽ"},
+  {area:"Alappuzha",agency:"Sea View Agencies",code:"22001",agent:"Mathew",phone:"9876500002",agency_ml:"സീ വ്യൂ",agent_ml:"മാത്യു"}
+];
+
+const $ = id => document.getElementById(id);
+let data = [], current = null;
+
+function parseCSV(t){
+  const rows=[];let r=[],c="",q=false;
+  for(let i=0;i<t.length;i++){
+    const ch=t[i];
+    if(q){ if(ch=='"'){ if(t[i+1]=='"'){c+='"';i++} else q=false } else c+=ch }
+    else if(ch=='"') q=true;
+    else if(ch==','){ r.push(c);c="" }
+    else if(ch=='\n'||ch=='\r'){ if(ch=='\r'&&t[i+1]=='\n')i++; r.push(c);c="";rows.push(r);r=[] }
+    else c+=ch;
+  }
+  if(c!==""||r.length){r.push(c);rows.push(r)}
+  return rows.filter(x=>x.some(v=>v.trim()!==""));
+}
+
+function mapRows(rows){
+  const h=rows[0].map(x=>x.trim().toLowerCase());
+  const find=(...keys)=>h.findIndex(x=>keys.every(k=>x.includes(k)));
+  const idx={
+    area:find("area"),
+    agency:h.findIndex(x=>x.includes("agency")&&x.includes("name")&&!x.includes("malayalam")),
+    code:find("code"),
+    agent:h.findIndex(x=>x.includes("agent")&&x.includes("name")&&!x.includes("malayalam")),
+    phone:h.findIndex(x=>x.includes("phone")),
+    agency_ml:h.findIndex(x=>x.includes("agency")&&x.includes("malayalam")),
+    agent_ml:h.findIndex(x=>x.includes("agent")&&x.includes("malayalam"))
+  };
+  return rows.slice(1).map(r=>{
+    const o={};for(const k in idx)o[k]=idx[k]>=0?(r[idx[k]]||"").trim():"";return o;
+  }).filter(o=>o.area||o.agency);
+}
+
+function fillAreas(){
+  const areas=[...new Set(data.map(d=>d.area))].filter(Boolean).sort();
+  $("area").innerHTML=areas.map(a=>`<option>${a}</option>`).join("");
+  onArea();
+}
+
+function agenciesInArea(){return data.filter(d=>d.area===$("area").value)}
+
+function onArea(){
+  $("search").value="";current=null;
+  const list=agenciesInArea();
+  if(list.length){select(list[0])} else clearDetails();
+}
+
+function select(item){
+  current=item;
+  $("search").value=item.agency;
+  $("ok").classList.add("show");
+  $("suggest").style.display="none";
+  $("f_code").textContent=item.code||"—";
+  $("f_agent").textContent=item.agent||"—";
+  $("f_phone").textContent=item.phone||"—";
+  $("f_agency_ml").textContent=item.agency_ml||"—";
+  $("f_agent_ml").textContent=item.agent_ml||"—";
+  $("details").style.display="block";
+  $("status").style.display="none";
+}
+
+function clearDetails(){
+  current=null;$("ok").classList.remove("show");
+  $("details").style.display="none";
+  $("status").style.display="block";
+  $("status").textContent="No agency found";
+}
+
+function onSearch(){
+  const q=$("search").value.trim().toLowerCase();
+  $("ok").classList.remove("show");
+  const matches=agenciesInArea().filter(d=>d.agency.toLowerCase().includes(q));
+  const box=$("suggest");
+  if(!matches.length){box.style.display="none";return}
+  box.innerHTML="";
+  matches.forEach(m=>{
+    const d=document.createElement("div");d.textContent=m.agency;
+    d.onclick=()=>select(m);box.appendChild(d);
+  });
+  box.style.display="block";
+  const exact=matches.find(m=>m.agency.toLowerCase()===q);
+  if(exact) select(exact);
+}
+
+$("area").addEventListener("change",onArea);
+$("search").addEventListener("input",onSearch);
+$("search").addEventListener("focus",onSearch);
+document.addEventListener("click",e=>{if(!e.target.closest(".field"))$("suggest").style.display="none"});
+
+(async function init(){
+  if(!SHEET_CSV_URL){
+    data=DEMO;
+    fillAreas();
+    return;
+  }
+  try{
+    const res=await fetch(SHEET_CSV_URL);
+    if(!res.ok)throw new Error(res.status);
+    const all=mapRows(parseCSV(await res.text()));
+    // Remove duplicate rows (same area + code), keeping the more complete one
+    const seen=new Map();
+    all.forEach(r=>{
+      const k=r.area+"|"+(r.code||r.agency);
+      const score=o=>Object.values(o).filter(v=>v).length;
+      if(!seen.has(k)||score(r)>score(seen.get(k)))seen.set(k,r);
+    });
+    data=[...seen.values()];
+    fillAreas();
+  }catch(e){
+    $("status").innerHTML='<span class="err">Google Sheet load ചെയ്യാൻ കഴിഞ്ഞില്ല.</span><br>'
+      +'<small>Reason: '+String(e&&e.message||e)+' | Opened from: '+location.protocol+'</small><br><br>'
+      +'<button onclick="location.reload()" style="padding:8px 16px;border-radius:10px;border:1px solid #555;background:transparent;color:inherit;font-size:14px">Retry</button>';
+  }
+})();
+</script>
+</body>
+</html>
