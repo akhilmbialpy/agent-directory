@@ -149,25 +149,16 @@ function mapRows(rows){
 
 function fillAreas(){
   const areas=[...new Set(data.map(d=>d.area))].filter(Boolean).sort();
-  $("area").innerHTML=areas.map(a=>`<option>${a}</option>`).join("")
-    +`<option value="${ALL}">All</option>`;
+  $("area").innerHTML=areas.map(a=>`<option>${a}</option>`).join("");
   onArea();
 }
 
-const ALL="__ALL__";
-
-function agenciesInArea(){
-  const v=$("area").value;
-  if(v===ALL) return [...data].sort((a,b)=>a.agency.localeCompare(b.agency));
-  return data.filter(d=>d.area===v);
-}
-
-const HINT="Search box-ൽ ഏജൻസി തിരഞ്ഞെടുക്കുക";
+function agenciesInArea(){return data.filter(d=>d.area===$("area").value)}
 
 function onArea(){
   $("search").value="";current=null;
-  $("suggest").style.display="none";
-  clearDetails(agenciesInArea().length?HINT:"No agency found");
+  const list=agenciesInArea();
+  if(list.length){select(list[0])} else clearDetails();
 }
 
 function select(item){
@@ -188,48 +179,32 @@ function select(item){
   $("status").style.display="none";
 }
 
-function clearDetails(msg){
+function clearDetails(){
   current=null;$("ok").classList.remove("show");
   $("details").style.display="none";
   $("status").style.display="block";
-  $("status").textContent=msg||HINT;
+  $("status").textContent="No agency found";
 }
 
-function onSearch(showAll){
-  const q=showAll===true?"":$("search").value.trim().toLowerCase();
-  if(showAll!==true){
-    // typing: hide the previous agency's details until a new one is chosen
-    if(current&&q!==current.agency.toLowerCase()) clearDetails(HINT);
-    $("ok").classList.remove("show");
-  }
+function onSearch(){
+  const q=$("search").value.trim().toLowerCase();
+  $("ok").classList.remove("show");
   const matches=agenciesInArea().filter(d=>d.agency.toLowerCase().includes(q));
   const box=$("suggest");
   if(!matches.length){box.style.display="none";return}
   box.innerHTML="";
   matches.forEach(m=>{
     const d=document.createElement("div");d.textContent=m.agency;
-    if($("area").value===ALL){
-      // in "All" mode show which area each agency belongs to
-      const s=document.createElement("small");
-      s.textContent="  ·  "+m.area;s.style.color="var(--muted)";
-      d.appendChild(s);
-    }
     d.onclick=()=>select(m);box.appendChild(d);
   });
   box.style.display="block";
-  if(showAll!==true){
-    const exact=matches.find(m=>m.agency.toLowerCase()===q);
-    if(exact) select(exact);
-  }
+  const exact=matches.find(m=>m.agency.toLowerCase()===q);
+  if(exact) select(exact);
 }
 
 $("area").addEventListener("change",onArea);
-$("search").addEventListener("input",()=>onSearch(false));
-$("search").addEventListener("focus",e=>{
-  // tapping the box selects the old name, so typing replaces it at once
-  if(e.target.value) setTimeout(()=>e.target.select(),0);
-  onSearch(true);
-});
+$("search").addEventListener("input",onSearch);
+$("search").addEventListener("focus",onSearch);
 document.addEventListener("click",e=>{if(!e.target.closest(".field"))$("suggest").style.display="none"});
 
 (async function init(){
